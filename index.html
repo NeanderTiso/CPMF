@@ -210,7 +210,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, arrayUnion, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, arrayUnion, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_v12xHMd9Ybk4x1FDs1LdIqtdRrid90Y",
@@ -307,7 +307,7 @@ async function renderAdminDash(){
   el.innerHTML='<p style="color:#888;font-size:14px;text-align:center;">Carregando...</p>';
   const list=await getTournaments();
   if(list.length===0){el.innerHTML=`<div class="empty-state"><div class="icon">${BALL_IMG_MD}</div><p>Nenhum torneio criado ainda.</p></div>`;return;}
-  el.innerHTML=list.map(t=>`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}</div></div><span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><button class="btn btn-sm btn-secondary" onclick="openAdminTournament('${t.id}')">Gerenciar →</button></div></div>`).join('');
+  el.innerHTML=list.map(t=>`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}</div></div><span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-secondary" onclick="openAdminTournament('${t.id}')">Gerenciar →</button><button class="btn btn-sm btn-danger" onclick="confirmDeleteTournament('${t.id}','${t.name}')">🗑️</button></div></div></div>`).join('');
 }
 window.openAdminTournament=function(id){state.currentTournamentId=id;showPage('pageAdminTournament');};
 
@@ -327,7 +327,7 @@ function buildAdminTournamentHtml(t,el){
   if(t.status==='open') html+=`<div class="share-box mb-8"><label>Link de inscricao:</label><div class="share-url mt-8"><input type="text" value="${shareUrl}" readonly id="shareLinkInput"/><button class="btn btn-sm btn-sky" onclick="copyShareLink()">Copiar</button></div></div>`;
   html+=`</div><div class="card"><div class="tabs"><button class="tab-btn active" id="tabBtnAtletas" onclick="switchAdminTab('atletas')">👥 Atletas</button><button class="tab-btn" id="tabBtnFase1" onclick="switchAdminTab('fase1')">Fase 1</button><button class="tab-btn" id="tabBtnFase2" onclick="switchAdminTab('fase2')">Fase 2</button></div>
   <div id="adminTabAtletas" class="tab-content active">
-    <div class="players-grid">${t.players.length===0?'<p style="color:#888;font-size:14px">Nenhum atleta inscrito ainda.</p>':t.players.map(p=>`<span class="player-chip">🏃 ${p.nickname}</span>`).join('')}</div>
+    <div class="players-grid">${t.players.length===0?'<p style="color:#888;font-size:14px">Nenhum atleta inscrito ainda.</p>':t.players.map(p=>`<span class="player-chip">🏃 ${p.nickname}<button onclick="removePlayer('${t.id}','${p.nickname}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:13px;padding:0 0 0 4px;line-height:1;" title="Remover">✕</button></span>`).join('')}</div>
     <div class="divider"></div>
     <p style="font-size:13px;color:#666;margin-bottom:12px">${t.players.length} atleta(s). Minimo: 12</p>
     ${t.status==='open'?`<button class="btn btn-danger btn-full mb-8" onclick="closeTournamentRegistration('${t.id}')">🔒 Encerrar Inscricoes</button>`:''}
@@ -482,6 +482,47 @@ function renderPodium(t){
   return`<div class="trophy-section"><div class="trophy-icon">🏆</div><h3>Resultado Final</h3><div class="podium-item podium-1">🥇 Campeoes: ${champs.join(' e ')}</div><div class="podium-item podium-2">🥈 Vice: ${second.join(' e ')}</div>${third?`<div class="podium-item podium-3">🥉 3° Lugar: ${third.join(' e ')}</div>`:''}</div>`;
 }
 window.finishTournament=async function(id){showLoading('Encerrando...');const t=await getTournament(id);t.status='finished';await saveTournament(t);hideLoading();};
+
+// ============================================================
+// REMOVE PLAYER
+// ============================================================
+window.removePlayer=function(tid, nickname){
+  showModal('Remover Atleta',`
+    <p>Deseja remover <strong>${nickname}</strong> do torneio?</p>
+    <p class="mt-8" style="font-size:13px;color:#666">Esta ação não pode ser desfeita.</p>
+  `,[
+    {label:'Cancelar', cls:'btn-outline', action:'closeModal()'},
+    {label:'Remover', cls:'btn-danger', action:`doRemovePlayer('${tid}','${nickname}')`}
+  ]);
+};
+window.doRemovePlayer=async function(tid, nickname){
+  showLoading('Removendo atleta...');
+  const t=await getTournament(tid);
+  t.players=t.players.filter(p=>p.nickname!==nickname);
+  await saveTournament(t);
+  closeModal();
+  hideLoading();
+};
+
+// ============================================================
+// DELETE TOURNAMENT
+// ============================================================
+window.confirmDeleteTournament=function(tid, name){
+  showModal('Excluir Torneio',`
+    <p>Deseja excluir permanentemente o torneio <strong>${name}</strong>?</p>
+    <div class="alert alert-danger mt-8">⚠️ Todos os dados, atletas e resultados serão perdidos.</div>
+  `,[
+    {label:'Cancelar', cls:'btn-outline', action:'closeModal()'},
+    {label:'Excluir', cls:'btn-danger', action:`doDeleteTournament('${tid}')`}
+  ]);
+};
+window.doDeleteTournament=async function(tid){
+  showLoading('Excluindo torneio...');
+  await deleteDoc(doc(db,'tournaments',tid));
+  closeModal();
+  hideLoading();
+  showPage('pageAdminDash');
+};
 
 window.closeTournamentRegistration=async function(id){
   const t=await getTournament(id);
