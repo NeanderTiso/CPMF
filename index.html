@@ -524,13 +524,13 @@ window.registerPlayer=async function(id){
   if(!nick||nick.length<2){showAlert(msgEl,'danger','Digite um apelido válido.');return;}
   showLoading('Inscrevendo...');
   try {
-    // Login anônimo para atletas poderem gravar sem conta
-    if(!auth.currentUser) await signInAnonymously(auth);
     const t=await getTournament(id);
-    if(t.status!=='open'){showAlert(msgEl,'danger','Inscrições encerradas.');hideLoading();return;}
+    if(t.status!=='open'){hideLoading();showAlert(msgEl,'danger','Inscrições encerradas.');return;}
     if(t.players.some(p=>p.nickname.toLowerCase()===nick.toLowerCase())){hideLoading();showAlert(msgEl,'danger','Apelido já em uso. Escolha outro.');return;}
-    t.players.push({nickname:nick,registeredAt:Date.now()});
-    await saveTournament(t);
+    // Usa updateDoc com arrayUnion — não exige autenticação se a regra permitir
+    await updateDoc(doc(db,'tournaments',id),{
+      players: [...t.players, {nickname:nick, registeredAt:Date.now()}]
+    });
     hideLoading();
     showAlert(msgEl,'success',`✅ ${nick}, inscrição confirmada!`);
     document.getElementById('playerNickname').value='';
