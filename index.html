@@ -317,7 +317,17 @@ async function renderAdminTournament(id){
   if(state.unsubscribe) state.unsubscribe();
   state.unsubscribe=onSnapshot(doc(db,'tournaments',id),snap=>{
     if(!snap.exists())return;
+    // Preserva aba ativa e posição do scroll antes de re-renderizar
+    const activeTab=['atletas','fase1','fase2'].find(t=>{
+      const el=document.getElementById('adminTab'+cap(t));
+      return el&&el.classList.contains('active');
+    })||'atletas';
+    const scrollY=window.scrollY;
     buildAdminTournamentHtml(snap.data(),el);
+    // Restaura aba ativa
+    if(activeTab!=='atletas') switchAdminTab(activeTab);
+    // Restaura posição do scroll
+    requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'instant'}));
   });
 }
 
