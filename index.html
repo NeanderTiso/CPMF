@@ -375,7 +375,7 @@ function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
 function renderPhase1Admin(t){
   if(t.status==='open'||t.status==='closed') return '<div class="empty-state"><div class="icon">⏳</div><p>Fase 1 nao iniciada ainda.</p></div>';
   const standings=calcStandings(t);
-  let html=`<div class="section-title">Classificacao Geral</div><div style="overflow-x:auto;margin-bottom:16px"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Pts</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td><strong>${p.pts}</strong></td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>`;
+  let html=`<div class="section-title">Classificacao Geral</div><div style="overflow-x:auto;margin-bottom:16px"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>`;
   if(checkAllRoundsDone(t)&&t.status==='phase1') html+=`<button class="btn btn-success btn-full mb-8" onclick="generatePhase2('${t.id}')">🏆 Gerar Semifinal e Final</button>`;
   const p1=t.matches.filter(m=>m.phase===1);
   const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);
@@ -425,7 +425,7 @@ function calcStandings(t){
     [p1a,p1b].forEach(p=>{if(!stats[p])return;stats[p].games++;stats[p].saldo+=(m.score1-m.score2);if(winner===1){stats[p].wins++;stats[p].pts+=2;}});
     [p2a,p2b].forEach(p=>{if(!stats[p])return;stats[p].games++;stats[p].saldo+=(m.score2-m.score1);if(winner===2){stats[p].wins++;stats[p].pts+=2;}});
   });
-  return Object.values(stats).sort((a,b)=>b.pts-a.pts||b.saldo-a.saldo||b.wins-a.wins);
+  return Object.values(stats).sort((a,b)=>b.wins-a.wins||b.saldo-a.saldo);
 }
 
 window.generatePhase1=async function(id){
@@ -671,7 +671,7 @@ function buildPublicViewHtml(t,el){
   if(['phase1','phase2','finished'].includes(t.status)){
     const standings=calcStandings(t);
     html+=`<div class="card"><div class="tabs"><button class="tab-btn active" id="pubTabBtnClassificacao" onclick="switchPubTab('classificacao')">📊 Classificacao</button><button class="tab-btn" id="pubTabBtnPartidas" onclick="switchPubTab('partidas')">🎯 Partidas</button>${t.status==='phase2'||t.status==='finished'?`<button class="tab-btn" id="pubTabBtnFinal" onclick="switchPubTab('final')">🏆 Final</button>`:''}</div>
-    <div id="pubTabClassificacao" class="tab-content active"><div style="overflow-x:auto"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Pts</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td><strong>${p.pts}</strong></td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>${t.status==='phase1'?'<p style="font-size:12px;color:#888;margin-top:8px">⭐ Fundo amarelo = Top 8</p>':''}</div>
+    <div id="pubTabClassificacao" class="tab-content active"><div style="overflow-x:auto"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>${t.status==='phase1'?'<p style="font-size:12px;color:#888;margin-top:8px">⭐ Fundo amarelo = Top 8</p>':''}</div>
     <div id="pubTabPartidas" class="tab-content">`;
     const p1=t.matches.filter(m=>m.phase===1);const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);
     rounds.forEach(r=>{html+=`<div class="phase-header">🎯 Rodada ${r}</div>`;p1.filter(m=>m.round===r).forEach(m=>{html+=renderMatchCard(m,t,false);});});
