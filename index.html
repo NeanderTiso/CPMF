@@ -65,12 +65,12 @@
   .score-row input{width:60px;text-align:center;padding:6px;}
   .score-form .btn-row{display:flex;gap:6px;justify-content:flex-end;}
   .standings-table{width:100%;border-collapse:collapse;}
-  .standings-table th{background:var(--net);color:var(--sand);padding:8px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;}
+  .standings-table th{background:#0a1628;color:#e8e0d5;padding:8px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--ball);}
   .standings-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.07);font-size:14px;color:var(--text);}
   .standings-table tr:nth-child(even) td{background:rgba(255,255,255,0.04);}
   .standings-table .top8 td{background:rgba(232,133,10,0.12);font-weight:600;}
   .standings-table .pos-col{font-family:'Bebas Neue',cursive;font-size:18px;color:var(--ball);width:30px;}
-  .player-chip{display:inline-flex;align-items:center;gap:6px;background:var(--sand);padding:5px 10px;border-radius:20px;font-size:14px;font-weight:600;color:var(--net);margin:3px;}
+  .player-chip{display:inline-flex;align-items:center;gap:6px;background:#1a2e47;padding:5px 10px;border-radius:20px;font-size:14px;font-weight:600;color:#e8e0d5;margin:3px;border:1px solid rgba(255,255,255,0.15);}
   .players-grid{display:flex;flex-wrap:wrap;gap:0;}
   .tabs{display:flex;border-bottom:2px solid var(--sand-dark);margin-bottom:16px;gap:0;}
   .tab-btn{flex:1;padding:10px 8px;background:none;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#8899aa;text-transform:uppercase;letter-spacing:0.5px;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s;}
@@ -84,7 +84,7 @@
   .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
   .trophy-section{text-align:center;padding:20px;background:linear-gradient(135deg,#1a1400,#2a1f00);border-radius:12px;margin-bottom:12px;border:2px solid #ffc107;color:#e8e0d5;}
   .trophy-section .trophy-icon{font-size:60px;}
-  .trophy-section h3{font-family:'Bebas Neue',cursive;font-size:28px;color:var(--net);letter-spacing:1px;}
+  .trophy-section h3{font-family:'Bebas Neue',cursive;font-size:28px;color:#ffc107;letter-spacing:1px;}
   .trophy-section .podium-item{padding:8px;border-radius:8px;margin:6px 0;font-weight:600;font-size:15px;}
   .podium-1{background:#FFD700;color:#5a4000;}.podium-2{background:#C0C0C0;color:#333;}.podium-3{background:#CD7F32;color:#4a2000;}
   .share-box{background:var(--sand);padding:14px;border-radius:10px;border:2px dashed var(--ball);}
@@ -348,7 +348,7 @@ async function renderAdminTournament(id){
 
 function buildAdminTournamentHtml(t,el){
   const shareUrl=window.location.href.split('?')[0]+'?t='+t.id;
-  let html=`<div class="card"><div class="flex-between mb-8"><div><div class="card-title" style="margin-bottom:4px">🏆 ${t.name}</div><div style="font-size:13px;color:#a8bdd4">📅 ${formatDate(t.date)} &nbsp;|&nbsp; <span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div></div></div>`;
+  let html=`<div class="card"><div class="flex-between mb-8"><div><div class="card-title" style="margin-bottom:4px">🏆 ${t.name}</div><div style="font-size:13px;color:#c8d8e8">📅 ${formatDate(t.date)} &nbsp;|&nbsp; <span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div></div></div>`;
   if(t.status==='open') html+=`<div class="share-box mb-8"><label>Link de inscricao:</label><div class="share-url mt-8"><input type="text" value="${shareUrl}" readonly id="shareLinkInput"/><button class="btn btn-sm btn-sky" onclick="copyShareLink()">Copiar</button></div></div>`;
   html+=`</div><div class="card"><div class="tabs"><button class="tab-btn active" id="tabBtnAtletas" onclick="switchAdminTab('atletas')">👥 Atletas</button><button class="tab-btn" id="tabBtnFase1" onclick="switchAdminTab('fase1')">Fase 1</button><button class="tab-btn" id="tabBtnFase2" onclick="switchAdminTab('fase2')">Fase 2</button></div>
   <div id="adminTabAtletas" class="tab-content active">
