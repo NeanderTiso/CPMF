@@ -16,7 +16,7 @@
   .site-header{background:var(--net);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,0.4);position:sticky;top:0;z-index:100;}
   .site-logo{display:flex;align-items:center;gap:10px;cursor:pointer;}
   .logo-text h1{font-family:'Bebas Neue',cursive;font-size:20px;color:var(--ball-bright);line-height:1;letter-spacing:1px;}
-  .logo-text span{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--sand);letter-spacing:3px;text-transform:uppercase;}
+  .logo-text span{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:3px;text-transform:uppercase;}
   .header-actions{display:flex;gap:8px;align-items:center;}
   .cpmf-center{display:flex;justify-content:center;align-items:center;padding:16px 0 0;position:relative;z-index:1;}
   .main-content{flex:1;padding:20px 16px;max-width:600px;margin:0 auto;width:100%;}
@@ -25,12 +25,12 @@
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;transition:all 0.2s;text-decoration:none;white-space:nowrap;}
   .btn:active{transform:scale(0.97);}
   .btn-primary{background:var(--ball);color:white;}.btn-primary:hover{background:var(--ball-bright);}
-  .btn-secondary{background:var(--net);color:var(--sand);}.btn-secondary:hover{background:#3d2318;}
+  .btn-secondary{background:#1a2e47;color:#e8e0d5;}.btn-secondary:hover{background:#243d5e;}
   .btn-sky{background:var(--sky);color:white;}.btn-sky:hover{background:var(--sky-light);}
   .btn-success{background:var(--success);color:white;}
   .btn-danger{background:var(--danger);color:white;}
   .btn-warning{background:var(--warning);color:white;}
-  .btn-outline{background:transparent;color:var(--net);border:2px solid var(--net);}
+  .btn-outline{background:transparent;color:#e8e0d5;border:2px solid rgba(255,255,255,0.3);}
   .btn-sm{padding:6px 12px;font-size:13px;}.btn-full{width:100%;}
   .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
   .form-group{margin-bottom:14px;}
@@ -82,7 +82,7 @@
   @keyframes modalIn{from{transform:scale(0.8) translateY(20px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
   .modal h3{font-family:'Bebas Neue',cursive;font-size:24px;color:var(--net);margin-bottom:16px;letter-spacing:1px;}
   .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
-  .trophy-section{text-align:center;padding:20px;background:linear-gradient(135deg,#1a1400,#2a1f00);border-radius:12px;margin-bottom:12px;border:2px solid #ffc107;}
+  .trophy-section{text-align:center;padding:20px;background:linear-gradient(135deg,#1a1400,#2a1f00);border-radius:12px;margin-bottom:12px;border:2px solid #ffc107;color:#e8e0d5;}
   .trophy-section .trophy-icon{font-size:60px;}
   .trophy-section h3{font-family:'Bebas Neue',cursive;font-size:28px;color:var(--net);letter-spacing:1px;}
   .trophy-section .podium-item{padding:8px;border-radius:8px;margin:6px 0;font-weight:600;font-size:15px;}
@@ -99,9 +99,9 @@
   .flex{display:flex;}.flex-between{display:flex;justify-content:space-between;align-items:center;}.flex-wrap{flex-wrap:wrap;}.gap-8{gap:8px;}.hidden{display:none!important;}
   .divider{height:1px;background:var(--sand-dark);margin:14px 0;}
   .empty-state{text-align:center;padding:40px 20px;color:#888;}.empty-state .icon{font-size:48px;margin-bottom:12px;}.empty-state p{font-size:15px;}
-  .nav-back{display:inline-flex;align-items:center;gap:6px;color:var(--sand);font-weight:600;font-size:14px;cursor:pointer;padding:6px 0;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:0.5px;}
+  .nav-back{display:inline-flex;align-items:center;gap:6px;color:#a8bdd4;font-weight:600;font-size:14px;cursor:pointer;padding:6px 0;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:0.5px;}
   .nav-back:hover{color:var(--ball-bright);}
-  .section-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px;}
+  .section-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#a8bdd4;margin-bottom:10px;}
   @media(max-width:380px){.hero h2{font-size:28px;}.card{padding:14px;}.btn{padding:9px 14px;font-size:14px;}}
 </style>
 </head>
@@ -348,7 +348,7 @@ async function renderAdminTournament(id){
 
 function buildAdminTournamentHtml(t,el){
   const shareUrl=window.location.href.split('?')[0]+'?t='+t.id;
-  let html=`<div class="card"><div class="flex-between mb-8"><div><div class="card-title" style="margin-bottom:4px">🏆 ${t.name}</div><div style="font-size:13px;color:#666">📅 ${formatDate(t.date)} &nbsp;|&nbsp; <span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div></div></div>`;
+  let html=`<div class="card"><div class="flex-between mb-8"><div><div class="card-title" style="margin-bottom:4px">🏆 ${t.name}</div><div style="font-size:13px;color:#a8bdd4">📅 ${formatDate(t.date)} &nbsp;|&nbsp; <span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div></div></div>`;
   if(t.status==='open') html+=`<div class="share-box mb-8"><label>Link de inscricao:</label><div class="share-url mt-8"><input type="text" value="${shareUrl}" readonly id="shareLinkInput"/><button class="btn btn-sm btn-sky" onclick="copyShareLink()">Copiar</button></div></div>`;
   html+=`</div><div class="card"><div class="tabs"><button class="tab-btn active" id="tabBtnAtletas" onclick="switchAdminTab('atletas')">👥 Atletas</button><button class="tab-btn" id="tabBtnFase1" onclick="switchAdminTab('fase1')">Fase 1</button><button class="tab-btn" id="tabBtnFase2" onclick="switchAdminTab('fase2')">Fase 2</button></div>
   <div id="adminTabAtletas" class="tab-content active">
