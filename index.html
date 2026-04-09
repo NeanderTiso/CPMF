@@ -597,7 +597,7 @@ function buildPlayerRegisterHtml(t,el){
   const available = VALID_PLAYERS.filter(n=>!alreadyIn.includes(n));
   let html=`<div class="hero"><div class="hero-sub">Inscrição</div><h2>${t.name}</h2>${CPMF_IMG}<p>📅 ${formatDate(t.date)}</p></div>`;
   if(t.status!=='open'){html+=`<div class="alert alert-danger">Inscrições encerradas.</div><button class="btn btn-sky btn-full" onclick="openPublicView('${t.id}')">Ver Torneio →</button>`;el.innerHTML=html;return;}
-  html+=`<div class="card">
+  html+=`<div class="card" style="position:relative;z-index:2">
     <div class="card-title">${BALL_IMG_SM} Inscrever-se</div>
     <div class="form-group">
       <label>Selecione seu Apelido</label>
