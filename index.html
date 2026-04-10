@@ -156,6 +156,7 @@
         <div class="card-title">⚙️ Painel do Administrador</div>
         <button class="btn btn-primary btn-full mb-8" onclick="showPage('pageCreateTournament')">➕ Criar Novo Torneio</button>
         <button class="btn btn-warning btn-full mb-8" onclick="showPage('pagePenalties')">⚠️ Gerenciar Penalidades</button>
+        <button class="btn btn-secondary btn-full mb-8" onclick="showPage('pageManualPoints')">🏅 Lançar Pontos Manuais</button>
         <div class="divider"></div>
         <div class="section-title">Torneios Cadastrados</div>
         <div id="adminTournamentList"></div>
@@ -203,6 +204,11 @@
     <div id="pagePenalties" class="page">
       <div class="nav-back" onclick="showPage('pageAdminDash')">← Voltar</div>
       <div id="penaltiesContent" class="mt-12"></div>
+    </div>
+
+    <div id="pageManualPoints" class="page">
+      <div class="nav-back" onclick="showPage('pageAdminDash')">← Voltar</div>
+      <div id="manualPointsContent" class="mt-12"></div>
     </div>
 
   </div>
@@ -266,6 +272,7 @@ window.showPage=async function(id,params){
   if(id==='pagePublicView') renderPublicView(state.currentTournamentId);
   if(id==='pageRanking') renderRanking();
   if(id==='pagePenalties') renderPenalties();
+  if(id==='pageManualPoints') renderManualPoints();
 };
 window.goHome=function(){showPage('pageHome');renderActiveBanner();};
 
@@ -740,6 +747,79 @@ const SCORE_WIN = 50;    // vitória na fase 1 (não semifinal/final)
 const SCORE_PENALTY = -50; // atraso > 15 min
 
 // ============================================================
+// MANUAL POINTS (pontos históricos lançados pelo admin)
+// ============================================================
+async function getManualPoints(){
+  const snap=await getDoc(doc(db,'rankingConfig','manualPoints'));
+  return snap.exists()?(snap.data().entries||[]):[];
+}
+async function saveManualPoints(entries){await setDoc(doc(db,'rankingConfig','manualPoints'),{entries});}
+
+async function renderManualPoints(){
+  if(!state.adminLoggedIn){showPage('pageAdminLogin');return;}
+  const el=document.getElementById('manualPointsContent');
+  el.innerHTML='<p style="color:#888;text-align:center;padding:20px">Carregando...</p>';
+  const entries=await getManualPoints();
+  let html=`<div class="card">
+    <div class="card-title">🏅 Lançar Pontos Manuais</div>
+    <p style="font-size:13px;color:#888;margin-bottom:14px">Use para registrar pontos de etapas anteriores cujos dados não estão no sistema.</p>
+    <div class="form-group"><label>Atleta</label>
+      <select id="mpPlayer"><option value="">Selecione o atleta...</option>${VALID_PLAYERS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+    </div>
+    <div class="form-group"><label>Etapa / Descrição</label><input type="text" id="mpLabel" placeholder="Ex: Etapa 1 - Verao 2024" maxlength="60"/></div>
+    <div class="form-group"><label>Pontos</label><input type="number" id="mpPts" placeholder="Ex: 500" step="1"/></div>
+    <div id="mpMsg" class="hidden"></div>
+    <button class="btn btn-primary btn-full" onclick="addManualPoint()">➕ Adicionar Pontos</button>
+  </div>`;
+
+  html+=`<div class="card"><div class="card-title">📋 Pontos Manuais Registrados</div>`;
+  if(entries.length===0){
+    html+='<p style="color:#888;font-size:14px">Nenhum ponto manual registrado.</p>';
+  } else {
+    html+=entries.map((e,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #333">
+        <div>
+          <div style="font-weight:700">🏃 ${e.player}</div>
+          <div style="font-size:12px;color:#888">${e.label}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:'Bebas Neue',cursive;font-size:20px;color:${e.pts>=0?'var(--accent)':'var(--danger)'}">${e.pts>0?'+':''}${e.pts}</span>
+          <button class="btn btn-sm btn-danger" onclick="removeManualPoint(${i})">✕</button>
+        </div>
+      </div>`).join('');
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+window.addManualPoint=async function(){
+  const player=document.getElementById('mpPlayer').value;
+  const label=document.getElementById('mpLabel').value.trim();
+  const pts=parseInt(document.getElementById('mpPts').value);
+  const msgEl=document.getElementById('mpMsg');
+  if(!player||!label||isNaN(pts)){showAlert(msgEl,'danger','Preencha todos os campos.');return;}
+  showLoading('Salvando...');
+  const entries=await getManualPoints();
+  entries.push({player,label,pts,createdAt:Date.now()});
+  await saveManualPoints(entries);
+  hideLoading();
+  showAlert(msgEl,'success',`✅ ${pts>0?'+':''}${pts} pts adicionados para ${player}.`);
+  document.getElementById('mpPlayer').value='';
+  document.getElementById('mpLabel').value='';
+  document.getElementById('mpPts').value='';
+  renderManualPoints();
+};
+
+window.removeManualPoint=async function(idx){
+  showLoading('Removendo...');
+  const entries=await getManualPoints();
+  entries.splice(idx,1);
+  await saveManualPoints(entries);
+  hideLoading();
+  renderManualPoints();
+};
+
+// ============================================================
 // CALC OVERALL RANKING
 // ============================================================
 async function calcOverallRanking() {
@@ -810,6 +890,15 @@ async function calcOverallRanking() {
       });
     }
   }
+
+  // Manual points (historical stages)
+  const manualEntries = await getManualPoints();
+  manualEntries.forEach(e => {
+    if(scores[e.player]){
+      scores[e.player].pts += e.pts;
+      scores[e.player].details.push({t:e.label,label:`${e.pts>=0?'🏅':'⚠️'} Ponto manual`,pts:e.pts});
+    }
+  });
 
   return Object.values(scores)
     .filter(s => s.pts !== 0 || s.details.length > 0)
