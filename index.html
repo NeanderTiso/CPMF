@@ -371,7 +371,8 @@ function buildAdminTournamentHtml(t,el){
     <div class="divider"></div>
     <p style="font-size:13px;color:#666;margin-bottom:12px">${t.players.length} atleta(s). Minimo: 12</p>
     ${t.status==='open'?`<button class="btn btn-danger btn-full mb-8" onclick="closeTournamentRegistration('${t.id}')">🔒 Encerrar Inscricoes</button>`:''}
-    ${t.status==='closed'?`<div class="alert alert-info mb-8">Inscricoes encerradas. ${t.players.length>=12?'Pronto para gerar fase 1!':`Aguardando mais atletas (${12-t.players.length} faltando).`}</div>${t.players.length>=12?`<button class="btn btn-success btn-full" onclick="generatePhase1('${t.id}')">⚡ Gerar Chaveamento Fase 1</button>`:''}`:'' }
+    ${t.status==='closed'?`<div class="alert alert-info mb-8">Inscricoes encerradas. ${t.players.length>=12?'Pronto para gerar fase 1!':`Aguardando mais atletas (${12-t.players.length} faltando).`}</div>${t.players.length>=12?`<button class="btn btn-success btn-full mb-8" onclick="generatePhase1('${t.id}')">⚡ Gerar Chaveamento Fase 1</button><button class="btn btn-secondary btn-full" onclick="startManualPhase1('${t.id}')">⚙️ Inserir Fase 1 Manualmente</button>`:''}`:''}
+    ${t.manualMode&&t.status==='phase1'?`<div class="alert alert-info mb-8">⚙️ Modo manual ativo — insira os jogos na aba Fase 1.</div>`:''}
   </div>
   <div id="adminTabFase1" class="tab-content">${renderPhase1Admin(t)}</div>
   <div id="adminTabFase2" class="tab-content">${renderPhase2Admin(t)}</div>
@@ -389,9 +390,14 @@ function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
 
 function renderPhase1Admin(t){
   if(t.status==='open'||t.status==='closed') return '<div class="empty-state"><div class="icon">⏳</div><p>Fase 1 nao iniciada ainda.</p></div>';
+  let html='';
+  if(t.manualMode) html+=renderManualMatchForm(t);
   const standings=calcStandings(t);
-  let html=`<div class="section-title">Classificacao Geral</div><div style="overflow-x:auto;margin-bottom:16px"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>`;
-  if(checkAllRoundsDone(t)&&t.status==='phase1') html+=`<button class="btn btn-success btn-full mb-8" onclick="generatePhase2('${t.id}')">🏆 Gerar Semifinal e Final</button>`;
+  html+=`<div class="section-title">Classificacao Geral</div><div style="overflow-x:auto;margin-bottom:16px"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>`;
+  if(t.status==='phase1'){
+    if(checkAllRoundsDone(t)) html+=`<button class="btn btn-success btn-full mb-8" onclick="generatePhase2('${t.id}')">🏆 Gerar Semifinal e Final</button>`;
+    html+=`<button class="btn btn-secondary btn-full mb-8" onclick="switchAdminTab('fase2')">⚙️ Montar Fase 2 Manualmente →</button>`;
+  }
   const p1=t.matches.filter(m=>m.phase===1);
   const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);
   rounds.forEach(r=>{html+=`<div class="phase-header">🎯 Rodada ${r}</div>`;p1.filter(m=>m.round===r).forEach(m=>{html+=renderMatchCard(m,t,true);});});
@@ -406,7 +412,7 @@ function renderMatchCard(m,t,isAdmin){
   if(isAdmin&&!m.done){
     html+=`<div class="match-actions"><div class="score-form" id="scoreForm_${m.id}" style="display:none"><div class="score-row"><span class="team-label">${m.team1.join('/')}</span><input type="number" id="s1_${m.id}" min="0" max="99" placeholder="0"/></div><div class="score-row"><span class="team-label">${m.team2.join('/')}</span><input type="number" id="s2_${m.id}" min="0" max="99" placeholder="0"/></div><div class="btn-row"><button class="btn btn-sm btn-outline" onclick="hideScoreForm('${m.id}')">Cancelar</button><button class="btn btn-sm btn-success" onclick="saveScore('${m.id}','${t.id}')">Salvar</button></div></div><button class="btn btn-sm btn-primary" id="editBtn_${m.id}" onclick="showScoreForm('${m.id}')">✏️ Inserir Resultado</button></div>`;
   } else if(isAdmin&&m.done){
-    html+=`<div class="match-actions"><button class="btn btn-sm btn-warning" onclick="resetMatch('${m.id}','${t.id}')">↩️ Corrigir Resultado</button></div>`;
+    html+=`<div class="match-actions">${t.manualMode&&m.phase===1?`<button class="btn btn-sm btn-danger" style="margin-right:6px" onclick="deleteManualMatch('${m.id}','${t.id}')">🗑️ Remover</button>`:''}<button class="btn btn-sm btn-warning" onclick="resetMatch('${m.id}','${t.id}')">↩️ Corrigir Resultado</button></div>`;
   }
   html+=`</div>`; return html;
 }
@@ -504,6 +510,7 @@ window.generatePhase2=async function(id){
 };
 
 function renderPhase2Admin(t){
+  if(t.status==='phase1') return renderPhase2ManualForm(t);
   if(t.status!=='phase2'&&t.status!=='finished') return '<div class="empty-state"><div class="icon">🏆</div><p>Complete a Fase 1 primeiro.</p></div>';
   let html='';
   const p2=t.matches.filter(m=>m.phase===2);
@@ -1228,6 +1235,111 @@ async function renderMensalidades(isAdmin){
 
   await renderMonth(currentMonth);
 }
+
+// ============================================================
+// ENTRADA MANUAL DE TORNEIOS
+// ============================================================
+function renderManualMatchForm(t){
+  const players=t.players.map(p=>p.nickname);
+  const opts='<option value="">Selecione...</option>'+players.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const rounds=t.matches.filter(m=>m.phase===1).map(m=>m.round);
+  const nextRound=rounds.length>0?Math.max(...rounds):1;
+  return `<div class="card" style="margin-bottom:12px"><div class="card-title" style="font-size:14px">➕ Adicionar Jogo — Fase 1</div>
+    <div class="form-group"><label>Rodada</label><input type="number" id="mmRound" min="1" value="${nextRound}" style="width:80px"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 1 — Jog. A</label><select id="mmT1A">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 1 — Jog. B</label><select id="mmT1B">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 2 — Jog. A</label><select id="mmT2A">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 2 — Jog. B</label><select id="mmT2B">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Placar Time 1</label><input type="number" id="mmS1" min="0" placeholder="0"/></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Placar Time 2</label><input type="number" id="mmS2" min="0" placeholder="0"/></div>
+    </div>
+    <div id="mmMsg" class="hidden" style="margin-top:8px"></div>
+    <button class="btn btn-primary btn-full mt-8" onclick="addManualMatch('${t.id}')">➕ Adicionar Jogo</button>
+  </div>`;
+}
+
+function renderPhase2ManualForm(t){
+  const players=t.players.map(p=>p.nickname);
+  const opts='<option value="">Selecione...</option>'+players.map(p=>`<option value="${p}">${p}</option>`).join('');
+  return `<div class="card"><div class="card-title">⚙️ Montar Fase 2 Manualmente</div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px">Preencha duplas e resultados das semifinais. Final e 3° lugar são definidos automaticamente pelos vencedores e perdedores.</p>
+    <div class="phase-header">⚡ Semifinal 1</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 1 — Jog. A</label><select id="sf1T1A">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 1 — Jog. B</label><select id="sf1T1B">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 2 — Jog. A</label><select id="sf1T2A">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 2 — Jog. B</label><select id="sf1T2B">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Placar Time 1</label><input type="number" id="sf1S1" min="0" placeholder="0"/></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Placar Time 2</label><input type="number" id="sf1S2" min="0" placeholder="0"/></div>
+    </div>
+    <div class="phase-header">⚡ Semifinal 2</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 1 — Jog. A</label><select id="sf2T1A">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 1 — Jog. B</label><select id="sf2T1B">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 2 — Jog. A</label><select id="sf2T2A">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Time 2 — Jog. B</label><select id="sf2T2B">${opts}</select></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Placar Time 1</label><input type="number" id="sf2S1" min="0" placeholder="0"/></div>
+      <div class="form-group" style="margin:0"><label style="font-size:12px">Placar Time 2</label><input type="number" id="sf2S2" min="0" placeholder="0"/></div>
+    </div>
+    <div id="mp2Msg" class="hidden" style="margin-top:8px"></div>
+    <button class="btn btn-success btn-full mt-8" onclick="saveManualPhase2('${t.id}')">✅ Criar Fase 2 e Salvar</button>
+  </div>`;
+}
+
+window.startManualPhase1=async function(id){
+  showLoading('Preparando entrada manual...');
+  const t=await getTournament(id);
+  t.matches=[]; t.status='phase1'; t.manualMode=true;
+  await saveTournament(t); hideLoading();
+};
+
+window.addManualMatch=async function(tid){
+  const v=id=>document.getElementById(id)?.value;
+  const round=parseInt(v('mmRound'))||1;
+  const team1=[v('mmT1A'),v('mmT1B')]; const team2=[v('mmT2A'),v('mmT2B')];
+  const s1=parseInt(v('mmS1')); const s2=parseInt(v('mmS2'));
+  const msgEl=document.getElementById('mmMsg');
+  if([...team1,...team2].some(p=>!p)){showAlert(msgEl,'danger','Selecione todos os jogadores.');return;}
+  if(new Set([...team1,...team2]).size<4){showAlert(msgEl,'danger','Jogadores não podem se repetir.');return;}
+  if(isNaN(s1)||isNaN(s2)||s1<0||s2<0){showAlert(msgEl,'danger','Insira placar válido.');return;}
+  if(s1===s2){showAlert(msgEl,'danger','Não pode haver empate.');return;}
+  showLoading('Salvando jogo...');
+  const t=await getTournament(tid);
+  const idx=t.matches.filter(m=>m.phase===1).length+1;
+  t.matches.push({id:`m_r${round}_${idx}`,phase:1,round,team1,team2,score1:s1,score2:s2,done:true});
+  await saveTournament(t); hideLoading();
+};
+
+window.deleteManualMatch=async function(mid,tid){
+  showLoading('Removendo jogo...');
+  const t=await getTournament(tid);
+  t.matches=t.matches.filter(m=>m.id!==mid);
+  await saveTournament(t); hideLoading();
+};
+
+window.saveManualPhase2=async function(tid){
+  const v=id=>document.getElementById(id)?.value;
+  const sf1={team1:[v('sf1T1A'),v('sf1T1B')],team2:[v('sf1T2A'),v('sf1T2B')],s1:parseInt(v('sf1S1')),s2:parseInt(v('sf1S2'))};
+  const sf2={team1:[v('sf2T1A'),v('sf2T1B')],team2:[v('sf2T2A'),v('sf2T2B')],s1:parseInt(v('sf2S1')),s2:parseInt(v('sf2S2'))};
+  const msgEl=document.getElementById('mp2Msg');
+  const all=[...sf1.team1,...sf1.team2,...sf2.team1,...sf2.team2];
+  if(all.some(p=>!p)){showAlert(msgEl,'danger','Selecione todos os jogadores.');return;}
+  if(new Set(all).size<8){showAlert(msgEl,'danger','Jogadores não podem se repetir entre as duplas.');return;}
+  if([sf1.s1,sf1.s2,sf2.s1,sf2.s2].some(s=>isNaN(s)||s<0)){showAlert(msgEl,'danger','Insira todos os placares.');return;}
+  if(sf1.s1===sf1.s2||sf2.s1===sf2.s2){showAlert(msgEl,'danger','Não pode haver empate.');return;}
+  showLoading('Salvando fase 2...');
+  const t=await getTournament(tid);
+  const sf1M={id:'sf1',phase:2,label:'Semifinal 1',team1:sf1.team1,team2:sf1.team2,score1:sf1.s1,score2:sf1.s2,done:true};
+  const sf2M={id:'sf2',phase:2,label:'Semifinal 2',team1:sf2.team1,team2:sf2.team2,score1:sf2.s1,score2:sf2.s2,done:true};
+  const fT1=sf1.s1>sf1.s2?sf1.team1:sf1.team2; const fT2=sf2.s1>sf2.s2?sf2.team1:sf2.team2;
+  const tT1=sf1.s1>sf1.s2?sf1.team2:sf1.team1; const tT2=sf2.s1>sf2.s2?sf2.team2:sf2.team1;
+  const finalM={id:'final',phase:2,label:'Final 🏆',team1:fT1,team2:fT2,score1:0,score2:0,done:false,isPending:false};
+  const thirdM={id:'third',phase:2,label:'3° Lugar',team1:tT1,team2:tT2,score1:0,score2:0,done:false,isPending:false};
+  t.matches=t.matches.filter(m=>m.phase!==2); t.matches.push(sf1M,sf2M,finalM,thirdM);
+  t.status='phase2'; t.phase2={top8:all};
+  await saveTournament(t); hideLoading();
+};
 
 async function init(){await renderActiveBanner();updateHeader();await checkUrlParams();}
 init();
