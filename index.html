@@ -171,6 +171,7 @@
         <div class="card-title">➕ Novo Torneio</div>
         <div class="form-group"><label>Nome do Evento</label><input type="text" id="newTournamentName" placeholder="Ex: Etapa 1 - Verao 2025"/></div>
         <div class="form-group"><label>Data do Evento</label><input type="date" id="newTournamentDate"/></div>
+        <div class="form-group"><label>Local</label><input type="text" id="newTournamentLocation" placeholder="Ex: Praia Central, Quadra 3"/></div>
         <button class="btn btn-primary btn-full" onclick="createTournament()">Criar Torneio</button>
       </div>
     </div>
@@ -312,13 +313,15 @@ async function saveTournament(t){await setDoc(doc(db,'tournaments',t.id),t);}
 window.createTournament=async function(){
   const name=document.getElementById('newTournamentName').value.trim();
   const date=document.getElementById('newTournamentDate').value;
+  const location=document.getElementById('newTournamentLocation').value.trim();
   if(!name||!date){alert('Preencha nome e data.');return;}
   showLoading('Criando torneio...');
   const id='T'+Date.now();
-  const t={id,name,date,status:'open',players:[],matches:[],phase2:null,createdAt:Date.now()};
+  const t={id,name,date,location,status:'open',players:[],matches:[],phase2:null,createdAt:Date.now()};
   await saveTournament(t);
   document.getElementById('newTournamentName').value='';
   document.getElementById('newTournamentDate').value='';
+  document.getElementById('newTournamentLocation').value='';
   hideLoading();
   const shareUrl=window.location.href.split('?')[0]+'?t='+id;
   showModal('Torneio Criado!',`<p>O torneio <strong>${name}</strong> foi criado.</p><div class="share-box mt-12"><label>Link de inscricao:</label><div class="share-url"><input type="text" value="${shareUrl}" readonly id="shareLinkInput"/><button class="btn btn-sm btn-sky" onclick="copyShareLink()">Copiar</button></div></div>`,[{label:'OK',cls:'btn-secondary',action:'closeModal();showPage("pageAdminDash");'}]);
@@ -337,9 +340,18 @@ async function renderAdminDash(){
   el.innerHTML='<p style="color:#888;font-size:14px;text-align:center;">Carregando...</p>';
   const list=await getTournaments();
   if(list.length===0){el.innerHTML=`<div class="empty-state"><div class="icon">${BALL_IMG_MD}</div><p>Nenhum torneio criado ainda.</p></div>`;return;}
-  el.innerHTML=list.map(t=>`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}</div></div><span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-secondary" onclick="openAdminTournament('${t.id}')">Gerenciar →</button><button class="btn btn-sm btn-danger" onclick="confirmDeleteTournament('${t.id}','${t.name}')">🗑️</button></div></div></div>`).join('');
+  el.innerHTML=list.map(t=>`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}${t.location?` &nbsp;•&nbsp; 📍 ${t.location}`:''}</div></div><span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-secondary" onclick="openAdminTournament('${t.id}')">Gerenciar →</button><button class="btn btn-sm btn-danger" onclick="confirmDeleteTournament('${t.id}','${t.name}')">🗑️</button></div></div></div>`).join('');
 }
 window.openAdminTournament=function(id){state.currentTournamentId=id;showPage('pageAdminTournament');};
+window.saveLocation=async function(tid){
+  const val=document.getElementById('editLocation_'+tid)?.value.trim()||'';
+  showLoading('Salvando local...');
+  const t=await getTournament(tid);
+  t.location=val;
+  await saveTournament(t);
+  hideLoading();
+  showToast('Local atualizado!');
+};
 
 async function renderAdminTournament(id){
   const el=document.getElementById('adminTournamentContent');
@@ -363,7 +375,8 @@ async function renderAdminTournament(id){
 
 function buildAdminTournamentHtml(t,el){
   const shareUrl=window.location.href.split('?')[0]+'?t='+t.id;
-  let html=`<div class="card"><div class="flex-between mb-8"><div><div class="card-title" style="margin-bottom:4px">🏆 ${t.name}</div><div style="font-size:13px;color:#c8d8e8">📅 ${formatDate(t.date)} &nbsp;|&nbsp; <span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div></div></div>`;
+  let html=`<div class="card"><div class="flex-between mb-8"><div><div class="card-title" style="margin-bottom:4px">🏆 ${t.name}</div><div style="font-size:13px;color:#c8d8e8">📅 ${formatDate(t.date)}${t.location?` &nbsp;|&nbsp; 📍 ${t.location}`:''} &nbsp;|&nbsp; <span class="badge badge-${t.status==='open'?'open':t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div></div></div>
+  <div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">📍 Local</label><div style="display:flex;gap:8px"><input type="text" id="editLocation_${t.id}" value="${t.location||''}" placeholder="Ex: Praia Central, Quadra 3" style="flex:1"/><button class="btn btn-sm btn-sky" onclick="saveLocation('${t.id}')">Salvar</button></div></div>`;
   if(t.status==='open') html+=`<div class="share-box mb-8"><label>Link de inscricao:</label><div class="share-url mt-8"><input type="text" value="${shareUrl}" readonly id="shareLinkInput"/><button class="btn btn-sm btn-sky" onclick="copyShareLink()">Copiar</button></div></div>`;
   html+=`</div><div class="card"><div class="tabs"><button class="tab-btn active" id="tabBtnAtletas" onclick="switchAdminTab('atletas')">👥 Atletas</button><button class="tab-btn" id="tabBtnFase1" onclick="switchAdminTab('fase1')">Fase 1</button><button class="tab-btn" id="tabBtnFase2" onclick="switchAdminTab('fase2')">Fase 2</button></div>
   <div id="adminTabAtletas" class="tab-content active">
@@ -600,8 +613,8 @@ async function renderPublicTournaments(){
   const list=await getTournaments();
   const open=list.filter(t=>t.status==='open');const others=list.filter(t=>t.status!=='open');
   let html='';
-  if(open.length>0){html+=`<div class="section-title">📋 Inscricoes Abertas</div>`;open.forEach(t=>{html+=`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}</div></div><span class="badge badge-open">Aberto</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><button class="btn btn-sm btn-primary" onclick="openPlayerRegister('${t.id}')">Me inscrever →</button></div></div>`;});}
-  if(others.length>0){html+=`<div class="section-title mt-12">📊 Outros Torneios</div>`;others.forEach(t=>{html+=`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}</div></div><span class="badge badge-${t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><button class="btn btn-sm btn-sky" onclick="openPublicView('${t.id}')">Ver Torneio →</button></div></div>`;});}
+  if(open.length>0){html+=`<div class="section-title">📋 Inscricoes Abertas</div>`;open.forEach(t=>{html+=`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}${t.location?` &nbsp;•&nbsp; 📍 ${t.location}`:''}</div></div><span class="badge badge-open">Aberto</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><button class="btn btn-sm btn-primary" onclick="openPlayerRegister('${t.id}')">Me inscrever →</button></div></div>`;});}
+  if(others.length>0){html+=`<div class="section-title mt-12">📊 Outros Torneios</div>`;others.forEach(t=>{html+=`<div class="tournament-item"><div class="tournament-item-header"><div><h3>${t.name}</h3><div class="t-date">📅 ${formatDate(t.date)}${t.location?` &nbsp;•&nbsp; 📍 ${t.location}`:''}</div></div><span class="badge badge-${t.status==='finished'?'finished':'active'}">${statusLabel(t.status)}</span></div><div class="flex-between"><span class="t-players">👥 ${t.players.length} atleta(s)</span><button class="btn btn-sm btn-sky" onclick="openPublicView('${t.id}')">Ver Torneio →</button></div></div>`;});}
   if(list.length===0) html=`<div class="empty-state"><div class="icon">${BALL_IMG_MD}</div><p>Nenhum torneio disponivel.</p></div>`;
   el.innerHTML=html;
 }
@@ -617,7 +630,7 @@ const VALID_PLAYERS = ['Andrade','Bento','Bona','Brunão','Carlão','Carneiro','
 function buildPlayerRegisterHtml(t,el){
   const alreadyIn = t.players.map(p=>p.nickname);
   const available = VALID_PLAYERS.filter(n=>!alreadyIn.includes(n));
-  let html=`<div class="hero"><div class="hero-sub">Inscrição</div><h2>${t.name}</h2>${CPMF_IMG}<p>📅 ${formatDate(t.date)}</p></div>`;
+  let html=`<div class="hero"><div class="hero-sub">Inscrição</div><h2>${t.name}</h2>${CPMF_IMG}<p>📅 ${formatDate(t.date)}${t.location?`<br>📍 ${t.location}`:''}</p></div>`;
   if(t.status!=='open'){html+=`<div class="alert alert-danger">Inscrições encerradas.</div><button class="btn btn-sky btn-full" onclick="openPublicView('${t.id}')">Ver Torneio →</button>`;el.innerHTML=html;return;}
   html+=`<div class="card" style="position:relative;z-index:2">
     <div class="card-title">${BALL_IMG_SM} Inscrever-se</div>
@@ -697,7 +710,7 @@ async function renderPublicView(id){
   state.unsubscribe=onSnapshot(doc(db,'tournaments',id),snap=>{if(!snap.exists())return;buildPublicViewHtml(snap.data(),el);});
 }
 function buildPublicViewHtml(t,el){
-  let html=`<div class="hero"><div class="hero-sub">${statusLabel(t.status)}</div><h2>${t.name}</h2>${CPMF_IMG}<p>📅 ${formatDate(t.date)} &nbsp;•&nbsp; 👥 ${t.players.length} atletas</p></div>`;
+  let html=`<div class="hero"><div class="hero-sub">${statusLabel(t.status)}</div><h2>${t.name}</h2>${CPMF_IMG}<p>📅 ${formatDate(t.date)} &nbsp;•&nbsp; 👥 ${t.players.length} atletas${t.location?`<br>📍 ${t.location}`:''}</p></div>`;
   if(t.status==='finished') html+=renderPodium(t);
   if(t.status==='open'||t.status==='closed'){
     html+=`<div class="card"><div class="card-title">👥 Atletas Inscritos</div><div class="players-grid">${t.players.map(p=>`<span class="player-chip">🏃 ${p.nickname}</span>`).join('')||'<p style="color:#888">Nenhum ainda.</p>'}</div></div>`;
