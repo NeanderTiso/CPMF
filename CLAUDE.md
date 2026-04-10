@@ -16,12 +16,33 @@ git commit -m "..."
 git push origin main
 ```
 
+## Firebase Security Rules
+
+The file `firestore.rules` is the **source of truth** for Firestore security rules. It is **not applied automatically** — this project has no Firebase CLI configured. Whenever the rules change, they must be copied manually to the Firebase Console:
+
+**Firebase Console → Firestore Database → Rules → (colar o conteúdo de `firestore.rules`) → Publish**
+
+### Rule summary per collection
+
+| Collection | Read | Write |
+|---|---|---|
+| `tournaments` | Public | `players` field: public; everything else: admin only |
+| `rankingConfig` | Public | Admin only (authenticated) |
+| `mensalidades` | Public | Public (athletes confirm without login) |
+
+### When to update `firestore.rules`
+
+Every time a new Firestore collection is introduced in `index.html`, add its rule block to `firestore.rules` and remind the user to publish the updated rules in the Firebase Console.
+
 ## Architecture
 
 Everything lives in `index.html`: HTML structure, CSS (inline `<style>`), and JavaScript (ES module `<script type="module">`).
 
 ### Backend: Firebase (no server)
-- **Firestore** (`db`): stores all tournament data in a `tournaments` collection. Each document is a full tournament object serialized via `saveTournament(t)` / `getTournament(id)`.
+- **Firestore** (`db`): collections in use:
+  - `tournaments/{id}` — full tournament object, read/written via `saveTournament(t)` / `getTournament(id)`
+  - `rankingConfig/manualPoints` — manual historical points for the overall ranking (`{ entries: [...] }`)
+  - `mensalidades/{YYYY-MM}` — monthly fee payments per athlete (`{ month, payers: [{player, confirmedAt}] }`)
 - **Auth**: email/password for admin login; anonymous sign-in for public users.
 - Real-time public views use `onSnapshot`.
 
@@ -29,7 +50,7 @@ Everything lives in `index.html`: HTML structure, CSS (inline `<style>`), and Ja
 A single `state` object tracks: `adminLoggedIn`, `currentTournamentId`, `unsubscribe` (Firestore listener).
 
 ### Pages (SPA)
-Navigation is done by toggling `.page.active` via `showPage(id)`. Page IDs: `pageHome`, `pageAdminLogin`, `pageAdminDash`, `pageCreateTournament`, `pageAdminTournament`, `pagePublicTournaments`, `pagePlayerRegister`, `pagePublicView`, `pageRanking`, `pagePenalties`.
+Navigation is done by toggling `.page.active` via `showPage(id)`. Page IDs: `pageHome`, `pageAdminLogin`, `pageAdminDash`, `pageCreateTournament`, `pageAdminTournament`, `pagePublicTournaments`, `pagePlayerRegister`, `pagePublicView`, `pageRanking`, `pagePenalties`, `pageManualPoints`, `pageMensalidades`.
 
 ### Tournament Lifecycle
 `status` field drives the flow:
