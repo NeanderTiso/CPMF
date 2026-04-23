@@ -639,7 +639,9 @@ const VALID_PLAYERS = ['Andrade','Bento','Bona','Brunão','Carlão','Carneiro','
 
 function buildPlayerRegisterHtml(t,el){
   const alreadyIn = t.players.map(p=>p.nickname);
-  const available = VALID_PLAYERS.filter(n=>!alreadyIn.includes(n));
+  const alreadyAbsent = (t.absences||[]).map(p=>p.nickname);
+  const available = VALID_PLAYERS.filter(n=>!alreadyIn.includes(n)&&!alreadyAbsent.includes(n));
+  const availableForAbsence = VALID_PLAYERS.filter(n=>!alreadyIn.includes(n)&&!alreadyAbsent.includes(n));
   let html=`<div class="hero"><div class="hero-sub">Inscrição</div><h2>${t.name}</h2>${CPMF_IMG}<p>📅 ${formatDate(t.date)}${t.location?`<br>${fmtLocation(t)}`:''}</p></div>`;
   if(t.status!=='open'){html+=`<div class="alert alert-danger">Inscrições encerradas.</div><button class="btn btn-sky btn-full" onclick="openPublicView('${t.id}')">Ver Torneio →</button>`;el.innerHTML=html;return;}
   html+=`<div class="card" style="position:relative;z-index:2">
@@ -663,9 +665,46 @@ function buildPlayerRegisterHtml(t,el){
   </div>
   <div class="card"><div class="card-title">👥 Inscritos (${t.players.length})</div>
     <div class="players-grid">${t.players.length===0?'<p style="color:#888;font-size:14px">Seja o primeiro!</p>':t.players.map(p=>`<span class="player-chip">🏃 ${p.nickname}</span>`).join('')}</div>
-  </div>`;
+  </div>
+  <div class="card" style="border-color:#f87171;opacity:0.9">
+    <div class="card-title" style="color:#f87171">❌ Confirmar Ausência</div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px">Não vai conseguir participar desta etapa? Registre sua ausência para ajudar na organização.</p>
+    <div class="form-group">
+      <label>Selecione seu Apelido</label>
+      <select id="absenceNickname" style="width:100%">
+        <option value="">Selecione...</option>
+        ${availableForAbsence.map(n=>`<option value="${n}">${n}</option>`).join('')}
+      </select>
+    </div>
+    <div id="absenceMsg" class="hidden"></div>
+    <button class="btn btn-full" style="background:#f87171;color:#fff;font-weight:700" onclick="registerAbsence('${t.id}')">Confirmar Ausência</button>
+  </div>
+  ${alreadyAbsent.length>0?`<div class="card"><div class="card-title" style="color:#f87171">❌ Ausências Confirmadas (${alreadyAbsent.length})</div><div class="players-grid">${(t.absences||[]).map(p=>`<span class="player-chip" style="background:#2a1a1a;color:#f87171;border-color:#f87171">❌ ${p.nickname}</span>`).join('')}</div></div>`:''}`;
   el.innerHTML=html;
 }
+window.registerAbsence=async function(id){
+  const nick=document.getElementById('absenceNickname').value.trim();
+  const msgEl=document.getElementById('absenceMsg');
+  if(!nick){showAlert(msgEl,'danger','Selecione um apelido da lista.');return;}
+  if(!VALID_PLAYERS.includes(nick)){showAlert(msgEl,'danger','Apelido inválido.');return;}
+  showLoading('Registrando ausência...');
+  try {
+    const t=await getTournament(id);
+    if(t.status!=='open'){hideLoading();showAlert(msgEl,'danger','Inscrições encerradas.');return;}
+    if(t.players.some(p=>p.nickname===nick)){hideLoading();showAlert(msgEl,'danger','Este atleta já está inscrito.');return;}
+    if((t.absences||[]).some(p=>p.nickname===nick)){hideLoading();showAlert(msgEl,'danger','Ausência já registrada.');return;}
+    await updateDoc(doc(db,'tournaments',id),{
+      absences: [...(t.absences||[]), {nickname:nick, confirmedAt:Date.now()}]
+    });
+    hideLoading();
+    showAlert(msgEl,'success',`✅ Ausência de ${nick} registrada.`);
+    document.getElementById('absenceNickname').value='';
+  } catch(e) {
+    hideLoading();
+    showAlert(msgEl,'danger','Erro ao registrar. Tente novamente.');
+    console.error(e);
+  }
+};
 
 window.showCombo=function(){
   const dd=document.getElementById('comboDropdown');
@@ -724,6 +763,7 @@ function buildPublicViewHtml(t,el){
   if(t.status==='finished') html+=renderPodium(t);
   if(t.status==='open'||t.status==='closed'){
     html+=`<div class="card"><div class="card-title">👥 Atletas Inscritos</div><div class="players-grid">${t.players.map(p=>`<span class="player-chip">🏃 ${p.nickname}</span>`).join('')||'<p style="color:#888">Nenhum ainda.</p>'}</div></div>`;
+    if(t.status==='open'&&(t.absences||[]).length>0) html+=`<div class="card"><div class="card-title" style="color:#f87171">❌ Ausências Confirmadas (${t.absences.length})</div><div class="players-grid">${t.absences.map(p=>`<span class="player-chip" style="background:#2a1a1a;color:#f87171;border-color:#f87171">❌ ${p.nickname}</span>`).join('')}</div></div>`;
     if(t.status==='open') html+=`<button class="btn btn-primary btn-full" onclick="openPlayerRegister('${t.id}')">Me inscrever →</button>`;
   }
   if(['phase1','phase2','finished'].includes(t.status)){

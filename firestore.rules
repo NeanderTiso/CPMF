@@ -6,10 +6,10 @@ service cloud.firestore {
       // Qualquer um pode ler
       allow read: if true;
 
-      // Qualquer um pode atualizar apenas o campo "players"
+      // Qualquer um pode atualizar apenas os campos "players" e "absences"
       allow update: if !request.auth != null
         || request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['players']);
+           .hasOnly(['players','absences']);
 
       // Só admin autenticado pode criar, alterar tudo e excluir torneios
       allow create: if request.auth != null;
