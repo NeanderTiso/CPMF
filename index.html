@@ -1109,7 +1109,9 @@ window.loadPenaltyAthletes = async function() {
   if(!tid) { group.style.display='none'; rGroup.style.display='none'; btn.style.display='none'; return; }
   const t = await getTournament(tid);
   const sel = document.getElementById('penPlayer');
-  const players = t.players.length > 0 ? t.players.map(p=>p.nickname) : VALID_PLAYERS;
+  const present = t.players.map(p=>p.nickname);
+  const absent = (t.absences||[]).map(p=>p.nickname);
+  const players = (present.length > 0 || absent.length > 0) ? [...new Set([...present, ...absent])].sort() : VALID_PLAYERS;
   sel.innerHTML = '<option value="">Selecione o atleta...</option>' + players.map(p=>`<option value="${p}">${p}</option>`).join('');
   group.style.display='block';
   rGroup.style.display='block';
