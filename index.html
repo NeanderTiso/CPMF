@@ -446,10 +446,10 @@ window.saveScore=async function(mid,tid){
   const s1=parseInt(document.getElementById('s1_'+mid).value);
   const s2=parseInt(document.getElementById('s2_'+mid).value);
   if(isNaN(s1)||isNaN(s2)||s1<0||s2<0){alert('Insira pontuacoes validas.');return;}
-  if(s1===s2){alert('Nao pode haver empate.');return;}
   showLoading('Salvando resultado...');
   const t=await getTournament(tid);
   const m=t.matches.find(x=>x.id===mid);
+  if(s1===s2&&m.phase!==1){alert('Nao pode haver empate em eliminatorias.');hideLoading();return;}
   m.score1=s1;m.score2=s2;m.done=true;
   if(mid==='sf1'||mid==='sf2'){
     const sf1=t.matches.find(x=>x.id==='sf1');const sf2=t.matches.find(x=>x.id==='sf2');
@@ -488,38 +488,28 @@ window.generatePhase1=async function(id){
   await saveTournament(t); hideLoading();
 };
 function generatePhase1Matches(players){
-  const nicknames=players.map(p=>p.nickname); const matches=[];let matchId=0;
+  const nicknames=players.map(p=>p.nickname);const matches=[];let matchId=0;
   const playerGames={};nicknames.forEach(p=>playerGames[p]=0);
   const pairCount={};
   function pairKey(a,b){return[a,b].sort().join('|');}
   function getPairCount(a,b){return pairCount[pairKey(a,b)]||0;}
   function addPair(a,b){const k=pairKey(a,b);pairCount[k]=(pairCount[k]||0)+1;}
-  let round=1;
-  while(nicknames.some(p=>playerGames[p]<4)){
-    const available=nicknames.filter(p=>playerGames[p]<4);
-    if(available.length<4)break;
-    const shuffled=shuffle([...available]);let used=new Set();let roundMatches=[];
-    for(let i=0;i<shuffled.length-3;i++){
-      if(used.has(shuffled[i]))continue;
-      let group=[shuffled[i]];
-      for(let j=i+1;j<shuffled.length&&group.length<4;j++){if(!used.has(shuffled[j]))group.push(shuffled[j]);}
-      if(group.length===4){group.forEach(p=>used.add(p));roundMatches.push(group);}
-    }
-    if(roundMatches.length===0)break;
-    roundMatches.forEach(group=>{
-      const[p1,p2,p3,p4]=shuffle(group);
-      const splits=[[[p1,p2],[p3,p4]],[[p1,p3],[p2,p4]],[[p1,p4],[p2,p3]]];
-      let best=splits[0],bestScore=Infinity;
-      splits.forEach(([[a,b],[c,d]])=>{
-        const score=getPairCount(a,b)+getPairCount(c,d);
-        if(score<bestScore){bestScore=score;best=[[a,b],[c,d]];}
-      });
-      const[[a,b],[c,d]]=best;
-      addPair(a,b);addPair(c,d);
-      const m={id:'m'+(++matchId),phase:1,round,team1:[a,b],team2:[c,d],done:false,score1:0,score2:0};
-      matches.push(m);[a,b,c,d].forEach(p=>playerGames[p]++);
-    });
-    round++;if(round>20)break;
+  const maxMatches=nicknames.length*4;
+  while(nicknames.some(p=>playerGames[p]<4)&&matches.length<maxMatches){
+    const needing=nicknames.filter(p=>playerGames[p]<4).sort((a,b)=>playerGames[a]-playerGames[b]);
+    if(needing.length<4)break;
+    const first=needing[0];
+    const rest=shuffle(needing.slice(1)).sort((a,b)=>getPairCount(first,a)-getPairCount(first,b));
+    const group=[first,rest[0],rest[1],rest[2]];
+    const[p1,p2,p3,p4]=group;
+    const splits=[[[p1,p2],[p3,p4]],[[p1,p3],[p2,p4]],[[p1,p4],[p2,p3]]];
+    let best=splits[0],bestScore=Infinity;
+    splits.forEach(([[a,b],[c,d]])=>{const score=getPairCount(a,b)+getPairCount(c,d);if(score<bestScore){bestScore=score;best=[[a,b],[c,d]];}});
+    const[[a,b],[c,d]]=best;
+    const round=playerGames[first]+1;
+    addPair(a,b);addPair(c,d);
+    const m={id:'m'+(++matchId),phase:1,round,team1:[a,b],team2:[c,d],done:false,score1:0,score2:0};
+    matches.push(m);[a,b,c,d].forEach(p=>playerGames[p]++);
   }
   return matches;
 }
