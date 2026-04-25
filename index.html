@@ -451,6 +451,14 @@ window.saveScore=async function(mid,tid){
   const t=await getTournament(tid);
   const m=t.matches.find(x=>x.id===mid);
   m.score1=s1;m.score2=s2;m.done=true;
+  if(mid==='sf1'||mid==='sf2'){
+    const sf1=t.matches.find(x=>x.id==='sf1');const sf2=t.matches.find(x=>x.id==='sf2');
+    const finalM=t.matches.find(x=>x.id==='final');const thirdM=t.matches.find(x=>x.id==='third');
+    if(sf1&&sf1.done&&sf2&&sf2.done&&finalM&&!finalM.done&&thirdM&&!thirdM.done){
+      finalM.team1=sf1.score1>sf1.score2?sf1.team1:sf1.team2;finalM.team2=sf2.score1>sf2.score2?sf2.team1:sf2.team2;finalM.isPending=false;
+      thirdM.team1=sf1.score1>sf1.score2?sf1.team2:sf1.team1;thirdM.team2=sf2.score1>sf2.score2?sf2.team2:sf2.team1;thirdM.isPending=false;
+    }
+  }
   await saveTournament(t); hideLoading();
 };
 window.resetMatch=async function(mid,tid){
