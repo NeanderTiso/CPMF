@@ -428,8 +428,9 @@ function renderPhase1Admin(t){
 }
 function checkAllRoundsDone(t){const p1=t.matches.filter(m=>m.phase===1);return p1.length>0&&p1.every(m=>m.done);}
 
-function renderMatchCard(m,t,isAdmin){
-  const t1=m.team1.join(' / '); const t2=m.team2.join(' / ');
+function renderMatchCard(m,t,isAdmin,highlight=''){
+  function hl(names){return names.map(n=>n===highlight?`<strong style="color:var(--sky)">${n}</strong>`:n).join(' / ');}
+  const t1=highlight?hl(m.team1):m.team1.join(' / '); const t2=highlight?hl(m.team2):m.team2.join(' / ');
   const winner=m.done?(m.score1>m.score2?1:2):0;
   let html=`<div class="match-card" id="match_${m.id}"><div class="match-header"><span>${m.phase===1?'Fase 1':m.label||'Fase 2'}</span><span>${m.done?'✅ Finalizado':'⏳ Aguardando'}</span></div><div class="match-teams"><div class="match-team ${m.done&&winner===1?'team-winner':''}"><span class="team-name">🏃 ${t1}</span><span class="team-score-display">${m.done?m.score1:'-'}</span></div><div class="match-team ${m.done&&winner===2?'team-winner':''}"><span class="team-name">🏃 ${t2}</span><span class="team-score-display">${m.done?m.score2:'-'}</span></div></div>`;
   if(isAdmin&&!m.done){
@@ -800,9 +801,9 @@ window.filterMyGames=async function(player,tid){
   if(mine.length===0){el.innerHTML='<p style="color:#888;text-align:center;padding:20px">Nenhuma partida encontrada.</p>';return;}
   let html='';
   const p1=mine.filter(m=>m.phase===1);
-  if(p1.length>0){const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);rounds.forEach(r=>{html+=`<div class="phase-header">🎯 Rodada ${r}</div>`;p1.filter(m=>m.round===r).forEach(m=>{html+=renderMatchCard(m,t,false);});});}
+  if(p1.length>0){const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);rounds.forEach(r=>{html+=`<div class="phase-header">🎯 Rodada ${r}</div>`;p1.filter(m=>m.round===r).forEach(m=>{html+=renderMatchCard(m,t,false,player);});});}
   const p2=mine.filter(m=>m.phase===2);
-  if(p2.length>0){html+=`<div class="phase-header">🏆 Fase 2</div>`;p2.forEach(m=>{html+=renderMatchCard(m,t,false);});}
+  if(p2.length>0){html+=`<div class="phase-header">🏆 Fase 2</div>`;p2.forEach(m=>{html+=renderMatchCard(m,t,false,player);});}
   el.innerHTML=html;
 };
 
