@@ -766,7 +766,7 @@ function buildPublicViewHtml(t,el){
   }
   if(['phase1','phase2','finished'].includes(t.status)){
     const standings=calcStandings(t);
-    html+=`<div class="card"><div class="tabs"><button class="tab-btn active" id="pubTabBtnClassificacao" onclick="switchPubTab('classificacao')">📊 Classificacao</button><button class="tab-btn" id="pubTabBtnPartidas" onclick="switchPubTab('partidas')">🎯 Partidas</button>${t.status==='phase2'||t.status==='finished'?`<button class="tab-btn" id="pubTabBtnFinal" onclick="switchPubTab('final')">🏆 Final</button>`:''}</div>
+    html+=`<div class="card"><div class="tabs"><button class="tab-btn active" id="pubTabBtnClassificacao" onclick="switchPubTab('classificacao')">📊 Classificacao</button><button class="tab-btn" id="pubTabBtnPartidas" onclick="switchPubTab('partidas')">🎯 Partidas</button>${t.status==='phase2'||t.status==='finished'?`<button class="tab-btn" id="pubTabBtnFinal" onclick="switchPubTab('final')">🏆 Final</button>`:''}<button class="tab-btn" id="pubTabBtnMeusjogos" onclick="switchPubTab('meusjogos')">🏃 Meus Jogos</button></div>
     <div id="pubTabClassificacao" class="tab-content active"><div style="overflow-x:auto"><table class="standings-table"><tr><th>#</th><th>Atleta</th><th>J</th><th>V</th><th>Saldo</th></tr>${standings.map((p,i)=>`<tr class="${i<8?'top8':''}"><td class="pos-col">${i+1}</td><td>${p.nickname}</td><td>${p.games}</td><td>${p.wins}</td><td>${p.saldo>=0?'+':''}${p.saldo}</td></tr>`).join('')}</table></div>${t.status==='phase1'?'<p style="font-size:12px;color:#888;margin-top:8px">⭐ Fundo amarelo = Top 8</p>':''}</div>
     <div id="pubTabPartidas" class="tab-content">`;
     const p1=t.matches.filter(m=>m.phase===1);const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);
@@ -780,15 +780,30 @@ function buildPublicViewHtml(t,el){
       if(fm&&!fm.isPending){html+=`<div class="phase-header">🏆 Final e 3° Lugar</div>`;[fm,tm].filter(m=>m&&!m.isPending).forEach(m=>{html+=renderMatchCard(m,t,false);});}
       html+=`</div>`;
     }
+    html+=`<div id="pubTabMeusjogos" class="tab-content"><div class="form-group" style="margin-bottom:12px"><select style="width:100%;padding:10px;border-radius:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);font-size:15px" onchange="filterMyGames(this.value,'${t.id}')"><option value="">Selecione seu nome...</option>${[...t.players].sort((a,b)=>a.nickname.localeCompare(b.nickname)).map(p=>`<option value="${p.nickname}">${p.nickname}</option>`).join('')}</select></div><div id="myGamesResult"><p style="color:#888;text-align:center;padding:20px">Selecione um atleta para ver suas partidas.</p></div></div>`;
     html+=`</div></div>`;
   }
   el.innerHTML=html;
 }
 window.switchPubTab=function(tab){
-  ['classificacao','partidas','final'].forEach(t=>{
+  ['classificacao','partidas','final','meusjogos'].forEach(t=>{
     const c=document.getElementById('pubTab'+cap(t));const b=document.getElementById('pubTabBtn'+cap(t));
     if(c)c.classList.toggle('active',t===tab);if(b)b.classList.toggle('active',t===tab);
   });
+};
+window.filterMyGames=async function(player,tid){
+  const el=document.getElementById('myGamesResult');
+  if(!player){el.innerHTML='<p style="color:#888;text-align:center;padding:20px">Selecione um atleta para ver suas partidas.</p>';return;}
+  el.innerHTML='<p style="color:#888;text-align:center;padding:20px">Carregando...</p>';
+  const t=await getTournament(tid);
+  const mine=t.matches.filter(m=>m.team1.includes(player)||m.team2.includes(player));
+  if(mine.length===0){el.innerHTML='<p style="color:#888;text-align:center;padding:20px">Nenhuma partida encontrada.</p>';return;}
+  let html='';
+  const p1=mine.filter(m=>m.phase===1);
+  if(p1.length>0){const rounds=[...new Set(p1.map(m=>m.round))].sort((a,b)=>a-b);rounds.forEach(r=>{html+=`<div class="phase-header">🎯 Rodada ${r}</div>`;p1.filter(m=>m.round===r).forEach(m=>{html+=renderMatchCard(m,t,false);});});}
+  const p2=mine.filter(m=>m.phase===2);
+  if(p2.length>0){html+=`<div class="phase-header">🏆 Fase 2</div>`;p2.forEach(m=>{html+=renderMatchCard(m,t,false);});}
+  el.innerHTML=html;
 };
 
 async function renderActiveBanner(){
